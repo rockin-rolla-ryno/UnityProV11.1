@@ -1,0 +1,102 @@
+
+(* ********************************************************************
+   DFB NAME: EDGE
+   FUNCTION: Encodes prioritized machine state and active alarms
+   PLATFORM: Schneider Unity Pro v11.2
+
+   --- INPUT PINS ---
+   IN_0 to IN_20      : BOOL    - Runtime status conditions (e.g. STOPPED, RUNNING)
+   IN_10001 to 10010  : WORD    - Alarm bit fields (each bit is mapped to unique alarm code)
+
+   --- OUTPUT PINS ---
+   STATUS_CODE        : INT     - Integer from 0 to 20 defining prioritized system state
+   ALARM_CODE_ARRAY   : ARRAY[0..127] OF INT - List of active alarm integer codes
+   ALARM_COUNT        : INT     - Number of currently active alarms
+   EngineStatus       : WORD    - Optional pass-through word for engine/system state
+
+   --- FUNCTIONAL LOGIC ---
+   1. STATUS_CODE is calculated based on first TRUE input in IN_0..IN_20
+   2. ALARM_CODE_ARRAY is cleared each scan
+   3. Each bit in IN_10001..10010 is checked; if set, a unique code (starting at 10010) is stored
+   4. ALARM_COUNT holds number of populated codes
+
+   --- NOTE ---
+   This DFB should be used to bridge machine logic to SCADA or Ignition Edge.
+   Make sure consuming system parses the array on change of ALARM_COUNT or STATUS_CODE.
+******************************************************************** *)
+
+
+
+(* ============================================ EDGE DFB MAIN SECTION ================================================================ *)
+
+
+(* 1. STATUS_CODE Priority Eval *)
+
+
+STATUS_CODE := -1;
+
+IF IN_0 THEN STATUS_CODE := 0;
+ELSIF IN_1 THEN STATUS_CODE := 1;
+ELSIF IN_2 THEN STATUS_CODE := 2;
+ELSIF IN_3 THEN STATUS_CODE := 3;
+ELSIF IN_4 THEN STATUS_CODE := 4;
+ELSIF IN_5 THEN STATUS_CODE := 5;
+ELSIF IN_6 THEN STATUS_CODE := 6;
+ELSIF IN_7 THEN STATUS_CODE := 7;
+ELSIF IN_8 THEN STATUS_CODE := 8;
+ELSIF IN_9 THEN STATUS_CODE := 9;
+ELSIF IN_10 THEN STATUS_CODE := 10;
+ELSIF IN_11 THEN STATUS_CODE := 11;
+ELSIF IN_12 THEN STATUS_CODE := 12;
+ELSIF IN_13 THEN STATUS_CODE := 13;
+ELSIF IN_14 THEN STATUS_CODE := 14;
+ELSIF IN_15 THEN STATUS_CODE := 15;
+ELSIF IN_16 THEN STATUS_CODE := 16;
+ELSIF IN_17 THEN STATUS_CODE := 17;
+ELSIF IN_18 THEN STATUS_CODE := 18;
+ELSIF IN_19 THEN STATUS_CODE := 19;
+ELSIF IN_20 THEN STATUS_CODE := 20;
+END_IF;
+
+(* 2. Clear Alarm Array Section *)
+
+(* Clear the alarm code array at start *)
+FOR alarmIndex := 0 TO 127 DO
+   ALARM_CODE_ARRAY[alarmIndex] := 0;
+END_FOR;
+
+alarmIndex := 0;
+ALARM_COUNT := 0;
+
+   
+
+(* 3. Unwrap Bits from Each Alarm WORD Input Pin   *)
+
+
+FOR wordIndex := 1 TO 10 DO
+   CASE wordIndex OF
+      1: mask := IN_10001;
+      2: mask := IN_10002;
+      3: mask := IN_10003;
+      4: mask := IN_10004;
+      5: mask := IN_10005;
+      6: mask := IN_10006;
+      7: mask := IN_10007;
+      8: mask := IN_10008;
+      9: mask := IN_10009;
+      10: mask := IN_10010;
+   ELSE
+      mask := 0;
+   END_CASE;
+
+   FOR bitIndex := 0 TO 15 DO
+      bitMask := SHL(1, bitIndex);
+      IF (mask AND INT_TO_WORD(bitMask)) <> 0 THEN
+         alarmCode := 10010 + ((wordIndex - 1) * 16) + UINT_TO_INT(bitIndex);
+         IF ALARM_COUNT < 128 THEN
+            ALARM_CODE_ARRAY[ALARM_COUNT] := alarmCode;
+            ALARM_COUNT := ALARM_COUNT + 1;
+         END_IF;
+      END_IF;
+   END_FOR;
+END_FOR;
